@@ -2,7 +2,7 @@ PROGRAM        = bookzen
 
 ARCH           = $(shell uname -s)
 VALAC          = valac
-VALACOPTS      = -g -D $(ARCH) -X -O3 -X -fomit-frame-pointer 
+VALACOPTS      = -g -D $(ARCH) -X -O3 -X -fomit-frame-pointer -X -lgthread-2.0
 PKGS		   = --pkg sqlite3 --pkg gmodule-2.0 --thread --pkg gio-2.0
 SRC            = BookZen.gs ListView.gs DeweyDb.gs
 ADDS           = ModeButton.gs 

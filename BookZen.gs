@@ -1,7 +1,7 @@
 [indent = 4]
 
 /*
-*       Copyright 2010 Hiram Jeronimo Perez "wøRg" <worg@linuxmail.org>
+*       Copyright 2011 Hiram Jeronimo Perez "wøRg" <worg@linuxmail.org>
 *
 *      This program is free software; you can redistribute it and/or modify
 *       it under the terms of the GNU General Public License version 3
@@ -23,21 +23,39 @@ uses
     Gtk
     Sqlite
     
+    /*
+class BookModel    : GLib.Object
+    dbl : Database
+    
+    construct (dbPath : string, out db : Database, ref ended : bool)      
+        if !FileUtils.test (dbPath, FileTest.IS_REGULAR)
+            /*Database.open (dbPath, out dbl)
+            initDb : string = """create table books  (lastNm text, midNm text, name text, title text, edition text, editPlace text, editor text, yoEdit text, serie text, clasifn integer references class(id), clasif text references class(name));
+                                create table class (id text, name text);"""
+            dbl.exec (initDb)
+            new DeweyDb(ref dbl, ref ended)
+            
+        else
+            Database.open (dbPath, out dbl)
+            
+        db = #dbl*/
+        
+        
 class BookZen : GLib.Object
     builder     : Builder
     localPath   : string
     homePath    : string = Environment.get_home_dir ()
     dbPath      : string
-    bm          : BookModel
+    isDb        : bool = false
     db          : Database
     window      : Window
-    initDlg     : Window
     errorD      : MessageDialog
-    btnBox      : HButtonBox
+    initDlg     : Window
+    btnBox      : Toolbar
     modeBtn     : ModeButton 
     homeFrame   : AspectFrame
-    regFrame    : Box
-    srchFrame   : Box
+    regFrame    : Viewport
+    srchFrame   : Viewport
     orderFrame  : Viewport
     homeImg     : Image
     entryLast   : Entry
@@ -68,21 +86,23 @@ class BookZen : GLib.Object
         builder = new Builder ()
         dbPath  = homePath + "/.config/bookzen/db.sqlite"
         uiPath : string  = localPath +  "/bookzen.ui"
-        
+               
         
         try
             builder.add_from_file (uiPath)
             
             window      = builder.get_object ("bookzen") as Window
-            initDlg      = builder.get_object ("initDlg") as Window
             errorD      = builder.get_object ("errorDialog") as MessageDialog
+            initDlg      = builder.get_object ("initDlg") as Window
             
-            btnBox      = builder.get_object ("BtnBox") as HButtonBox
+            btnBox      = builder.get_object ("BtnBox") as Toolbar
+            var modeBox = builder.get_object ("modeBox") as HBox
+            modeTool   : ToolItem = new ToolItem()
             modeBtn     = new ModeButton()
             
             homeFrame   = builder.get_object ("homeFrame") as AspectFrame
-            regFrame    = builder.get_object ("registerFrame") as Box
-            srchFrame   = builder.get_object ("searchFrame") as Box
+            regFrame    = builder.get_object ("registerFrame") as Viewport
+            srchFrame   = builder.get_object ("searchFrame") as Viewport
             orderFrame  = builder.get_object ("orderFrame") as Viewport
             homeImg     = builder.get_object ("homeImg") as Image
             entryLast   = builder.get_object ("entryLast") as Entry
@@ -118,7 +138,12 @@ class BookZen : GLib.Object
                 
             initListViews ()
             
-            btnBox.pack_start (modeBtn)
+            //modeBox.add(new HSeparator())
+            modeBtn.height_request = 25
+            modeBox.add(modeBtn)
+            modeBox.add(new HSeparator())
+            //modeTool.add (modeBox)
+            btnBox.insert (modeTool, 0)
             srchView.add(srchResults)
             orderView.add(orderField)
             homeImg.set_from_file(localPath + "/books.png")   
@@ -138,8 +163,7 @@ class BookZen : GLib.Object
             if !FileUtils.test (dbPath, FileTest.IS_REGULAR)
                 firstRun()
             else
-                bm = new BookModel(dbPath)
-                db = #bm.db
+                initDb ()
                 initComboData ()                   
         except e: Error
             error ("%s\nDoh, that means the UI can't be loaded", e.message)
@@ -166,7 +190,6 @@ class BookZen : GLib.Object
                 
         srchResults = new ListView(srchLst, hdrs)
         orderField = new ListView(orderLst, hdrs)
-        orderField = new ListView(orderLst, hdrs)
         comboClass.set_model(comboLst)
         srCombo.set_model(comboLst)
 
@@ -192,31 +215,34 @@ class BookZen : GLib.Object
         comboLst.set(comboIter, -1)
         return 0
         
-    def firstRun ()
-        /*waitPID : Pid
-        waitRun : array of string = {"helper", null }*/
-        callback : SourceFunc = showDlg
-        DirUtils.create_with_parents (homePath + "/.config/bookzen/", 0755)
-        //window.hide ()        
-        //initDlg.show_all ()
+    def async firstRun ()
+        DirUtils.create_with_parents(homePath + "/.config/bookzen/", 0755)        
+        initDlg.show ()        
+        var dw = new DeweyDb (dbPath)
+        dw.finished.connect(this.closeDlg)
+        dw.initDewey();
         
-        bm = new BookModel (dbPath)
-        bm.isDone.connect (isDb)
-        Timeout.add (3,callback)
-        bm.initDewey ()
+    def initDb()
+        Database.open (dbPath, out db)
+        initDb : string = """create table books  (lastNm text, midNm text, name text, title text, edition text, editPlace text, editor text, yoEdit text, serie text, clasifn integer references class(id), clasif text references class(name));
+                            create table class (id text, name text);"""
+        db.exec (initDb)
+            
+    def closeDlg()
+        initDb ()
+        checkPlace ()
+        
+    def async checkPlace ()
+        tmp : string = Environment.get_tmp_dir ()
+        tmp += "/bookzenlock"
+        
+        while true
+            if isDb or FileUtils.test (tmp,FileTest.EXISTS)
+                initComboData.begin ()
+                initDlg.destroy ()
+                window.show_all ()
+                break  
                 
-    def isDb ()
-        print "\n DEBUG \n---hi---\n DEBUG \n"
-        db = #bm.db
-        initComboData.begin ()
-        window.show_all ()
-        initDlg.destroy ()
-        
-    def showDlg () : bool
-        if !initDlg.visible
-            initDlg.show_all ()
-            print "show dialog"        
-        return true
         
     [CCode (instance_pos = -1)] [CCode (cname = "G_MODULE_EXPORT book_zen_terminate")] 
     def terminate (widget : Widget)
@@ -375,12 +401,14 @@ class BookZen : GLib.Object
             stmnt += "VALUES (" + string.joinv (", ", data) + ")"
             db.exec (stmnt)
             clearTexts ()
-        
+            
     [CCode (instance_pos = -1)] [CCode (cname = "G_MODULE_EXPORT book_zen_delSuggest")] 
     def delSuggest (entry : Entry?)
         entry.set_text ("")
         
 init
+    Gdk.threads_init()
+    Gdk.threads_enter()
     Gtk.init  (ref args) //gtk must be initialized when using GtkBuilder, otherwise the program will segfault
-    app : BookZen = new BookZen (ref args)
+    a : BookZen = new BookZen (ref args)
     Gtk.main ()
