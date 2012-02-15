@@ -22,24 +22,7 @@
 uses
     Gtk
     Sqlite
-    
-    /*
-class BookModel    : GLib.Object
-    dbl : Database
-    
-    construct (dbPath : string, out db : Database, ref ended : bool)      
-        if !FileUtils.test (dbPath, FileTest.IS_REGULAR)
-            /*Database.open (dbPath, out dbl)
-            initDb : string = """create table books  (lastNm text, midNm text, name text, title text, edition text, editPlace text, editor text, yoEdit text, serie text, clasifn integer references class(id), clasif text references class(name));
-                                create table class (id text, name text);"""
-            dbl.exec (initDb)
-            new DeweyDb(ref dbl, ref ended)
-            
-        else
-            Database.open (dbPath, out dbl)
-            
-        db = #dbl*/
-        
+           
         
 class BookZen : GLib.Object
     builder     : Builder
