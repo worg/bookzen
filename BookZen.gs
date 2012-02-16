@@ -27,7 +27,7 @@ uses
 class BookZen : GLib.Object
     builder     : Builder
     localPath   : string
-    homePath    : string = Environment.get_home_dir ()
+    cfgPath     : string = Environment.get_user_config_dir ()
     dbPath      : string
     isDb        : bool = false
     db          : Database
@@ -67,9 +67,9 @@ class BookZen : GLib.Object
         localPath = Path.get_dirname(args[0])
         
         builder = new Builder ()
-        dbPath  = homePath + "/.config/bookzen/db.sqlite"
+        dbPath  = cfgPath + "/bookzen/db.sqlite"
         uiPath : string  = localPath +  "/bookzen.ui"
-               
+        print dbPath + "\n"
         
         try
             builder.add_from_file (uiPath)
@@ -199,7 +199,7 @@ class BookZen : GLib.Object
         return 0
         
     def async firstRun ()
-        DirUtils.create_with_parents(homePath + "/.config/bookzen/", 0755)        
+        DirUtils.create_with_parents(cfgPath + "/bookzen/", 0755)        
         initDlg.show ()        
         var dw = new DeweyDb (dbPath)
         dw.finished.connect(this.closeDlg)
